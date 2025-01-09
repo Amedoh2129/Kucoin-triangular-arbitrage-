@@ -5,10 +5,9 @@ const cors = require("cors");
 const path = require("path");
 
 const app = express();
-const server = app.listen(3000, () =>
-  log(
-    "Kucoin triangular arbitrage finder has started. Please wait while the bot identifies possible paths....."
-  )
+const port = process.env.PORT || 3000; // Use the port provided by Replit or default to 3000
+const server = app.listen(port, () => 
+  log(`Kucoin triangular arbitrage finder has started on port ${port}. Please wait while the bot identifies possible paths.....`)
 );
 
 app.use(cors());
@@ -31,3 +30,9 @@ arbitrage.eventEmitter.on("ARBITRAGE", (pl) => {
 });
 
 initialize();
+
+// Global error handling for express routes
+app.use((err, req, res, next) => {
+  error("Unhandled error:", err);
+  res.status(500).send("Something went wrong.");
+});
