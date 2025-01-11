@@ -81,25 +81,97 @@ const getPairs = async () => {
         if (lv1.length && lv2.length && lv3.length) {
           pairs.push({
             l1: l1,
-            l2: l2,
-            l3: l3,
-            d1: d1,
-            d2: d2,
-            d3: d3,
-            lv1: lv1[0],
-            lv2: lv2[0],
-            lv3: lv3[0],
-            value: -100,
-            tpath: "",
-          });
-        }
-      }
+const getPairs = async () => {
+  try {
+    const resp = await got("https://api.kucoin.com/api/v2/symbols");
+    const eInfo = JSON.parse(resp.body);
+    const symbols = [
+      ...new Set(
+        eInfo.data
+          .filter((d) => d.enableTrading)
+          .map((d) => [d.baseCurrency, d.quoteCurrency])
+          .flat()
+      ),
+    ];
+    const validPairs = eInfo.data
+      .filter((d) => d.enableTrading)
+      .map((d) => d.symbol);
+    validPairs.forEach((symbol) => {
+      symValJ[symbol] = { bidPrice: 0, askPrice: 0 };
     });
-  });
 
-  log(
-    `Finished identifying all the paths. Total symbols = ${symbols.length}.Total Pairs = ${validPairs.length}. Total paths = ${pairs.length}`
-  );
+    validPairs.forEach((p) => {
+      symbols.forEach((d3) => {
+        const [d1, d2] = p.split("-");
+        if (!(d1 == d2 || d2 == d3 || d3 == d1)) {
+          let lv1 = [],
+            lv2 = [],
+            lv3 = [],
+            l1 = "",
+            l2 = "",
+            l3 = "";
+
+          const p12 = formatPair(d1, d2);
+          const p21 = formatPair(d2, d1);
+
+          const p23 = formatPair(d2, d3);
+          const p32 = formatPair(d3, d2);
+
+          const p31 = formatPair(d3, d1);
+          const p13 = formatPair(d1, d3);
+
+          if (symValJ[p12]) {
+            lv1.push(p12);
+            l1 = "num";
+          }
+          if (symValJ[p21]) {
+            lv1.push(p21);
+            l1 = "den";
+          }
+
+          if (symValJ[p23]) {
+            lv2.push(p23);
+            l2 = "num";
+          }
+          if (symValJ[p32]) {
+            lv2.push(p32);
+            l2 = "den";
+          }
+
+          if (symValJ[p31]) {
+            lv3.push(p31);
+            l3 = "num";
+          }
+          if (symValJ[p13]) {
+            lv3.push(p13);
+            l3 = "den";
+          }
+
+          if (lv1.length && lv2.length && lv3.length) {
+            pairs.push({
+              l1: l1,
+              l2: l2,
+              l3: l3,
+              d1: d1,
+              d2: d2,
+              d3: d3,
+              lv1: lv1[0],
+              lv2: lv2[0],
+              lv3: lv3[0],
+              value: -100,
+              tpath: "",
+            });
+          }
+        }
+      });
+    });
+
+    log(
+      `Finished identifying all the paths. Total symbols = ${symbols.length}.Total Pairs = ${validPairs.length}. Total paths = ${pairs.length}`
+    );
+  } catch (err) {
+    error("Failed to fetch trading pairs:", err);
+  }
 };
 
 const processData = (pl) => {
