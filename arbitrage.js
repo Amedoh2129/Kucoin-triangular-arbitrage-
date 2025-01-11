@@ -1,7 +1,7 @@
 const { log, error } = console;
 const got = require("got");
 const events = require("events");
-const Websocket = require("ws");
+const WebSocket = require("ws");
 const { sort } = require("fast-sort");
 const { promisify } = require("util");
 const delay = promisify(setTimeout);
@@ -29,13 +29,8 @@ const getTickers = async () => {
     validPairs.forEach((p) => {
       symbols.forEach((d3) => {
         const [d1, d2] = p.split("-");
-        if (!(d1 == d2 || d2 == d3 || d3 == d1)) {
-          let lv1 = [],
-            lv2 = [],
-            lv3 = [],
-            l1 = "",
-            l2 = "",
-            l3 = "";
+        if (!(d1 === d2 || d2 === d3 || d3 === d1)) {
+          let lv1 = [], lv2 = [], lv3 = [], l1 = "", l2 = "", l3 = "";
 
           const p12 = formatPair(d1, d2);
           const p21 = formatPair(d2, d1);
@@ -93,7 +88,7 @@ const getTickers = async () => {
     });
 
     log(
-      `Finished identifying all the paths. Total symbols = ${symbols.length}.Total Pairs = ${validPairs.length}. Total paths = ${pairs.length}`
+      `Finished identifying all the paths. Total symbols = ${symbols.length}. Total Pairs = ${validPairs.length}. Total paths = ${pairs.length}`
     );
   } catch (err) {
     error("Failed to fetch tickers:", err);
@@ -112,19 +107,19 @@ const processData = (pl) => {
     if (bidPrice) symValJ[symbol].bidPrice = bidPrice * 1;
     if (askPrice) symValJ[symbol].askPrice = askPrice * 1;
 
-    //Perform calculation and send alerts
+    // Perform calculation and send alerts
     pairs
       .filter((d) => {
         return (d.lv1 + d.lv2 + d.lv3).includes(symbol);
       })
       .forEach((d) => {
-        //continue if price is not updated for any symbol
+        // continue if price is not updated for any symbol
         if (
           symValJ[d.lv1]["bidPrice"] &&
           symValJ[d.lv2]["bidPrice"] &&
           symValJ[d.lv3]["bidPrice"]
         ) {
-          //Level 1 calculation
+          // Level 1 calculation
           let lv_calc, lv_str;
           if (d.l1 === "num") {
             lv_calc = symValJ[d.lv1]["bidPrice"];
@@ -152,7 +147,7 @@ const processData = (pl) => {
               "<br/>";
           }
 
-          //Level 2 calculation
+          // Level 2 calculation
           if (d.l2 === "num") {
             lv_calc *= symValJ[d.lv2]["bidPrice"];
             lv_str +=
@@ -179,7 +174,7 @@ const processData = (pl) => {
               "<br/>";
           }
 
-          //Level 3 calculation
+          // Level 3 calculation
           if (d.l3 === "num") {
             lv_calc *= symValJ[d.lv3]["bidPrice"];
             lv_str +=
@@ -209,7 +204,7 @@ const processData = (pl) => {
         }
       });
 
-    //Send Socket
+    // Send Socket
     eventEmitter.emit(
       "ARBITRAGE",
       sort(pairs.filter((d) => d.value > 0)).desc((u) => u.value)
@@ -252,19 +247,18 @@ const wsconnect = async () => {
       return;
     }
     connectionCount++;
-    console.log(
-      "Establishing all the required websocket connections. Please wait..."
-    );
-    // CLEAR OLD DATA
+    console.log("Establishing all the required websocket connections. Please wait...");
+    
+    // Clear previous WebSocket connection
     if (ws) ws.terminate();
     clearInterval(wspingTrigger);
     clearTimeout(wsreconnectTrigger);
 
-    // GET SOCKET METADATA
+    // Get WebSocket metadata
     const resp = await got.post("https://api.kucoin.com/api/v1/bullet-public");
     const wsmeta = JSON.parse(resp.body);
 
-    // EXTRACT DATA
+    // Extract WebSocket connection data
     const wsToken = wsmeta?.data?.token;
     const wsURLx = wsmeta?.data?.instanceServers?.[0]?.endpoint;
     const wspingInterval = wsmeta?.data?.instanceServers?.[0]?.pingInterval;
@@ -272,10 +266,11 @@ const wsconnect = async () => {
       wsmeta?.data?.instanceServers?.[0]?.pingTimeout + wspingInterval;
     wsClientID = Math.floor(Math.random() * 10 ** 10);
 
-    // ESTABLISH CONNECTION
-    ws = new Websocket(`${wsURLx}?token=${wsToken}&[connectId=${wsClientID}]`);
+    // Establish WebSocket connection
+    ws = new WebSocket(`${wsURLx}?token=${wsToken}&[connectId=${wsClientID}]`);
+    
     ws.on("open", () => {
-      // subscribe
+      // Subscribe to WebSocket topic
       ws.send(
         JSON.stringify({
           id: wsClientID,
@@ -287,15 +282,15 @@ const wsconnect = async () => {
       );
 
       console.log("All connections established.");
-      console.log(
-        "Open http://127.0.0.1:3000/ in the browser to access the tool."
-      );
+      console.log("Open http://127.0.0.1:3000/ in the browser to access the tool.");
     });
+
     ws.on("error", (err) => {
       console.error("WebSocket error:", err);
       wsreconnectTrigger = setTimeout(wsconnect, 5000);
       connectionCount--;
     });
+
     ws.on("message", processData);
     ws.on("close", () => {
       console.log("WebSocket connection closed. Reconnecting...");
@@ -303,11 +298,13 @@ const wsconnect = async () => {
       wsreconnectTrigger = setTimeout(wsconnect, 5000);
       connectionCount--;
     });
+
     ws.on("pong", () => {
       clearTimeout(wsreconnectTrigger);
       wsreconnectTrigger = setTimeout(wsconnect, wspingTimeout);
     });
 
+    // Periodically send ping to maintain connection
     wspingTrigger = setInterval(() => {
       if (ws.readyState === WebSocket.OPEN) {
         ws.ping();
@@ -319,20 +316,6 @@ const wsconnect = async () => {
     connectionCount--;
   }
 };
-
-const sendMessage = (message) => {
-  const now = Date.now();
-  if (now - messageTimeWindowStart > messageInterval) {
-    messageTimeWindowStart = now;
-    messageCount = 0;
-  }
-  if (messageCount < maxMessages) {
-    ws.send(message);
-    messageCount++;
-  } else {
-    console.error("Message limit reached. Cannot send more messages.");
-  }
-}
 
 // Call getTickersWithRateLimit to fetch tickers with rate limit
 setInterval(getTickersWithRateLimit, 100); // Call the function every 100ms
