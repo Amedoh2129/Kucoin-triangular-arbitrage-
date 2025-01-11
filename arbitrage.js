@@ -318,6 +318,8 @@ const wsconnect = async () => {
 };
 
 // Call getTickersWithRateLimit to fetch tickers with rate limit
-setInterval(getTickersWithRateLimit, 100); // Call the function every 100ms
+setInterval(async () => {
+  await getTickersWithRateLimit();
+}, 100); // Call the function every 100ms
 
 module.exports = { getTickers, wsconnect, eventEmitter };
