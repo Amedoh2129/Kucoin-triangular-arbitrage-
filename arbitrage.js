@@ -13,24 +13,18 @@ const eventEmitter = new events();
 
 const formatPair = (b, q) => b + "-" + q;
 
-const getPairs = async () => {
+const getTickers = async () => {
   try {
-    const resp = await got("https://api.kucoin.com/api/v2/symbols");
-    const eInfo = JSON.parse(resp.body);
-    const symbols = [
-      ...new Set(
-        eInfo.data
-          .filter((d) => d.enableTrading)
-          .map((d) => [d.baseCurrency, d.quoteCurrency])
-          .flat()
-      ),
-    ];
-    const validPairs = eInfo.data
-      .filter((d) => d.enableTrading)
-      .map((d) => d.symbol);
-    validPairs.forEach((symbol) => {
-      symValJ[symbol] = { bidPrice: 0, askPrice: 0 };
+    const resp = await got("https://api.kucoin.com/api/v1/market/allTickers");
+    const tickers = JSON.parse(resp.body).data.ticker;
+    
+    tickers.forEach(ticker => {
+      const symbol = ticker.symbol;
+      symValJ[symbol] = { bidPrice: parseFloat(ticker.buy), askPrice: parseFloat(ticker.sell) };
     });
+
+    const symbols = [...new Set(tickers.map(ticker => [ticker.symbol.split('-')[0], ticker.symbol.split('-')[1]]).flat())];
+    const validPairs = tickers.map(ticker => ticker.symbol);
 
     validPairs.forEach((p) => {
       symbols.forEach((d3) => {
@@ -102,7 +96,7 @@ const getPairs = async () => {
       `Finished identifying all the paths. Total symbols = ${symbols.length}.Total Pairs = ${validPairs.length}. Total paths = ${pairs.length}`
     );
   } catch (err) {
-    error("Failed to fetch trading pairs:", err);
+    error("Failed to fetch tickers:", err);
   }
 };
 
@@ -225,6 +219,20 @@ const processData = (pl) => {
   }
 };
 
+const rateLimit = async (fn, limit, interval) => {
+  let lastCall = 0;
+  return async (...args) => {
+    const now = Date.now();
+    if (now - lastCall < interval) {
+      await delay(interval - (now - lastCall));
+    }
+    lastCall = Date.now();
+    return fn(...args);
+  };
+};
+
+const getTickersWithRateLimit = rateLimit(getTickers, 15, 1000); // 15 requests per second
+
 let ws = "";
 let subs = [];
 let wspingTrigger = "";
@@ -298,4 +306,7 @@ const wsconnect = async () => {
   }
 };
 
-module.exports = { getPairs, wsconnect, eventEmitter };
+// Call getTickersWithRateLimit to fetch tickers with rate limit
+getTickersWithRateLimit();
+
+module.exports = { getTickers, wsconnect, eventEmitter };
