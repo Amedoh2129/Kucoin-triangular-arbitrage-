@@ -302,7 +302,7 @@ let wsClientID;
 const wsconnect = async () => {
   try {
     console.log(
-      "Establishing all the required websocket connections.Please wait..."
+      "Establishing all the required websocket connections. Please wait..."
     );
     // CLEAR OLD DATA
     if (ws) ws.terminate();
@@ -313,7 +313,7 @@ const wsconnect = async () => {
     const resp = await got.post("https://api.kucoin.com/api/v1/bullet-public");
     const wsmeta = JSON.parse(resp.body);
 
-    //EXTRACT DATA
+    // EXTRACT DATA
     const wsToken = wsmeta?.data?.token;
     const wsURLx = wsmeta?.data?.instanceServers?.[0]?.endpoint;
     const wspingInterval = wsmeta?.data?.instanceServers?.[0]?.pingInterval;
@@ -321,10 +321,10 @@ const wsconnect = async () => {
       wsmeta?.data?.instanceServers?.[0]?.pingTimeout + wspingInterval;
     wsClientID = Math.floor(Math.random() * 10 ** 10);
 
-    //ESTABLISH CONNECTION
+    // ESTABLISH CONNECTION
     ws = new Websocket(`${wsURLx}?token=${wsToken}&[connectId=${wsClientID}]`);
     ws.on("open", () => {
-      //subscribe
+      // subscribe
       ws.send(
         JSON.stringify({
           id: wsClientID,
@@ -335,26 +335,34 @@ const wsconnect = async () => {
         })
       );
 
-      console.log("all connections established.");
+      console.log("All connections established.");
       console.log(
         "Open http://127.0.0.1:3000/ in the browser to access the tool."
       );
     });
-    ws.on("error", log);
+    ws.on("error", (err) => {
+      console.error("WebSocket error:", err);
+      wsreconnectTrigger = setTimeout(wsconnect, 5000);
+    });
     ws.on("message", processData);
-    ws.on("pong", () => {
-      // log("PONG RECEIVED");
+    ws.on("close", () => {
+      console.log("WebSocket connection closed. Reconnecting...");
       clearTimeout(wsreconnectTrigger);
-      wsreconnectTrigger = setTimeout(() => {
-        wsconnect();
-      }, wspingTimeout);
+      wsreconnectTrigger = setTimeout(wsconnect, 5000);
+    });
+    ws.on("pong", () => {
+      clearTimeout(wsreconnectTrigger);
+      wsreconnectTrigger = setTimeout(wsconnect, wspingTimeout);
     });
 
     wspingTrigger = setInterval(() => {
-      ws.ping();
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.ping();
+      }
     }, wspingInterval);
   } catch (err) {
-    console.error(err);
+    console.error("Failed to establish WebSocket connection:", err);
+    wsreconnectTrigger = setTimeout(wsconnect, 5000);
   }
 };
 
