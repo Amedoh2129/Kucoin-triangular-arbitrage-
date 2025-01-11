@@ -323,7 +323,7 @@ const getPairs = () => {
 };
 
 // Call getTickersWithRateLimit to fetch tickers with rate limit
-setInterval(getTickersWithRateLimit, 100); // Call the function every 100ms
+setInterval(() => getTickersWithRateLimit(), 100); // Call the function every 100ms
 
 module.exports = { 
   getTickers, 
