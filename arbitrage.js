@@ -214,6 +214,7 @@ const processData = (pl) => {
   }
 };
 
+// Rate limiting logic to ensure the getTickers function doesn't exceed API rate limits
 const rateLimit = async (fn, limit, interval) => {
   let lastCall = 0;
   return async (...args) => {
@@ -226,6 +227,7 @@ const rateLimit = async (fn, limit, interval) => {
   };
 };
 
+// Create the rate-limited version of getTickers
 const getTickersWithRateLimit = rateLimit(getTickers, 15, 1000); // 15 requests per second
 
 let ws = "";
