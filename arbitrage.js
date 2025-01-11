@@ -238,9 +238,20 @@ let subs = [];
 let wspingTrigger = "";
 let wsreconnectTrigger = "";
 let wsClientID;
+let connectionCount = 0;
+const maxConnections = 30;
+const maxMessages = 100;
+const messageInterval = 10000;
+let messageCount = 0;
+let messageTimeWindowStart = Date.now();
 
 const wsconnect = async () => {
   try {
+    if (connectionCount >= maxConnections) {
+      console.error("Connection limit reached. Cannot establish a new connection.");
+      return;
+    }
+    connectionCount++;
     console.log(
       "Establishing all the required websocket connections. Please wait..."
     );
@@ -283,12 +294,14 @@ const wsconnect = async () => {
     ws.on("error", (err) => {
       console.error("WebSocket error:", err);
       wsreconnectTrigger = setTimeout(wsconnect, 5000);
+      connectionCount--;
     });
     ws.on("message", processData);
     ws.on("close", () => {
       console.log("WebSocket connection closed. Reconnecting...");
       clearTimeout(wsreconnectTrigger);
       wsreconnectTrigger = setTimeout(wsconnect, 5000);
+      connectionCount--;
     });
     ws.on("pong", () => {
       clearTimeout(wsreconnectTrigger);
@@ -303,10 +316,25 @@ const wsconnect = async () => {
   } catch (err) {
     console.error("Failed to establish WebSocket connection:", err);
     wsreconnectTrigger = setTimeout(wsconnect, 5000);
+    connectionCount--;
   }
 };
 
+const sendMessage = (message) => {
+  const now = Date.now();
+  if (now - messageTimeWindowStart > messageInterval) {
+    messageTimeWindowStart = now;
+    messageCount = 0;
+  }
+  if (messageCount < maxMessages) {
+    ws.send(message);
+    messageCount++;
+  } else {
+    console.error("Message limit reached. Cannot send more messages.");
+  }
+}
+
 // Call getTickersWithRateLimit to fetch tickers with rate limit
-getTickersWithRateLimit();
+setInterval(getTickersWithRateLimit, 100); // Call the function every 100ms
 
 module.exports = { getTickers, wsconnect, eventEmitter };
