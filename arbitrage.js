@@ -90,6 +90,12 @@ const processData = (pl) => {
     const { bestBid: bidPrice, bestAsk: askPrice } = data;
     if (!bidPrice && !askPrice) return;
 
+    // Safe check to ensure values are valid
+    if (isNaN(bidPrice) || isNaN(askPrice)) {
+      log(`Invalid price data for ${symbol}. Skipping.`);
+      return;
+    }
+
     symValJ[symbol] = {
       bidPrice: bidPrice * 1 || symValJ[symbol].bidPrice,
       askPrice: askPrice * 1 || symValJ[symbol].askPrice
@@ -97,7 +103,7 @@ const processData = (pl) => {
 
     calculateArbitrage(symbol);
   } catch (err) {
-    error(err);
+    error("Error processing WebSocket message:", err);
   }
 };
 
@@ -115,6 +121,7 @@ const calculateArbitrage = (symbol) => {
       }
     });
 
+  // Emit the arbitrage opportunities to be consumed by other parts of the system
   eventEmitter.emit("ARBITRAGE", sort(pairs.filter(d => d.value > 0)).desc(u => u.value));
 };
 
@@ -162,7 +169,7 @@ const wsconnect = async () => {
 
     wspingTrigger = setInterval(() => { if (ws.readyState === WebSocket.OPEN) ws.ping(); }, wspingInterval);
   } catch (err) {
-    error(err);
+    error("Error establishing WebSocket connection:", err);
   }
 };
 
