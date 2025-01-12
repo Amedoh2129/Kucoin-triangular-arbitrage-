@@ -130,6 +130,10 @@ const generatePathString = (d) => {
   return `${d.d1} to ${d.lv1}/${d.d2} to ${d.lv2}/${d.d3} to ${d.lv3}/${d.d1}`;
 };
 
+const getPairs = () => {
+  return pairs;
+};
+
 let ws = "";
 let wspingTrigger = "";
 let wsreconnectTrigger = "";
@@ -184,4 +188,4 @@ const handleWsPong = () => {
   wsreconnectTrigger = setTimeout(wsconnect, wspingTimeout);
 };
 
-module.exports = { getTickers, wsconnect, eventEmitter };
+module.exports = { getTickers, wsconnect, eventEmitter, getPairs };
