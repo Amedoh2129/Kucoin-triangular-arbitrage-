@@ -145,6 +145,7 @@ let ws = "";
 let wspingTrigger = "";
 let wsreconnectTrigger = "";
 let wsClientID;
+let wspingTimeout; // Declare wspingTimeout at the top level
 
 const wsconnect = async () => {
   try {
@@ -158,7 +159,7 @@ const wsconnect = async () => {
     const wsToken = wsmeta?.data?.token;
     const wsURLx = wsmeta?.data?.instanceServers?.[0]?.endpoint;
     const wspingInterval = wsmeta?.data?.instanceServers?.[0]?.pingInterval;
-    const wspingTimeout = wsmeta?.data?.instanceServers?.[0]?.pingTimeout + wspingInterval;
+    wspingTimeout = wsmeta?.data?.instanceServers?.[0]?.pingTimeout + wspingInterval;
     wsClientID = Math.floor(Math.random() * 10 ** 10);
 
     ws = new WebSocket(`${wsURLx}?token=${wsToken}&[connectId=${wsClientID}]`);
