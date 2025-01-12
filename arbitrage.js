@@ -233,32 +233,22 @@ let subs = [];
 let wspingTrigger = "";
 let wsreconnectTrigger = "";
 let wsClientID;
-let connectionCount = 0;
-const maxConnections = 30;
-const maxMessages = 100;
-const messageInterval = 10000;
-let messageCount = 0;
-let messageTimeWindowStart = Date.now();
 
 const wsconnect = async () => {
   try {
-    if (connectionCount >= maxConnections) {
-      console.error("Connection limit reached. Cannot establish a new connection.");
-      return;
-    }
-    connectionCount++;
-    console.log("Establishing all the required websocket connections. Please wait...");
-    
-    // Clear previous WebSocket connection
+    console.log(
+      "Establishing all the required websocket connections.Please wait..."
+    );
+    // CLEAR OLD DATA
     if (ws) ws.terminate();
     clearInterval(wspingTrigger);
     clearTimeout(wsreconnectTrigger);
 
-    // Get WebSocket metadata
+    // GET SOCKET METADATA
     const resp = await got.post("https://api.kucoin.com/api/v1/bullet-public");
     const wsmeta = JSON.parse(resp.body);
 
-    // Extract WebSocket connection data
+    //EXTRACT DATA
     const wsToken = wsmeta?.data?.token;
     const wsURLx = wsmeta?.data?.instanceServers?.[0]?.endpoint;
     const wspingInterval = wsmeta?.data?.instanceServers?.[0]?.pingInterval;
@@ -266,11 +256,10 @@ const wsconnect = async () => {
       wsmeta?.data?.instanceServers?.[0]?.pingTimeout + wspingInterval;
     wsClientID = Math.floor(Math.random() * 10 ** 10);
 
-    // Establish WebSocket connection
-    ws = new WebSocket(`${wsURLx}?token=${wsToken}&[connectId=${wsClientID}]`);
-    
+    //ESTABLISH CONNECTION
+    ws = new Websocket(`${wsURLx}?token=${wsToken}&[connectId=${wsClientID}]`);
     ws.on("open", () => {
-      // Subscribe to WebSocket topic
+      //subscribe
       ws.send(
         JSON.stringify({
           id: wsClientID,
@@ -281,53 +270,27 @@ const wsconnect = async () => {
         })
       );
 
-      console.log("All connections established.");
-      console.log("Open http://127.0.0.1:3000/ in the browser to access the tool.");
+      console.log("all connections established.");
+      console.log(
+        "Open http://127.0.0.1:3000/ in the browser to access the tool."
+      );
     });
-
-    ws.on("error", (err) => {
-      console.error("WebSocket error:", err);
-      wsreconnectTrigger = setTimeout(wsconnect, 5000);
-      connectionCount--;
-    });
-
+    ws.on("error", log);
     ws.on("message", processData);
-    ws.on("close", () => {
-      console.log("WebSocket connection closed. Reconnecting...");
-      clearTimeout(wsreconnectTrigger);
-      wsreconnectTrigger = setTimeout(wsconnect, 5000);
-      connectionCount--;
-    });
-
     ws.on("pong", () => {
+      // log("PONG RECEIVED");
       clearTimeout(wsreconnectTrigger);
-      wsreconnectTrigger = setTimeout(wsconnect, wspingTimeout);
+      wsreconnectTrigger = setTimeout(() => {
+        wsconnect();
+      }, wspingTimeout);
     });
 
-    // Periodically send ping to maintain connection
     wspingTrigger = setInterval(() => {
-      if (ws.readyState === WebSocket.OPEN) {
-        ws.ping();
-      }
+      ws.ping();
     }, wspingInterval);
   } catch (err) {
-    console.error("Failed to establish WebSocket connection:", err);
-    wsreconnectTrigger = setTimeout(wsconnect, 5000);
-    connectionCount--;
+    console.error(err);
   }
 };
 
-// Function to return the pairs array
-const getPairs = () => {
-  return pairs;
-};
-
-// Call getTickers to fetch tickers with rate limit
-setInterval(() => getTickers(), 100); // Call the function every 100ms
-
-module.exports = { 
-  getTickers, 
-  wsconnect, 
-  eventEmitter, 
-  getPairs // Export the getPairs function
-};
+module.exports = { getPairs, wsconnect, eventEmitter };
