@@ -37,7 +37,7 @@ const enforceRateLimit = async () => {
     await delay(requestRateLimit.interval);
     requestCounter = 0;
   }
-}
+};
 
 const updateTickers = (tickers) => {
   tickers.forEach(ticker => {
