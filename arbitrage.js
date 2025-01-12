@@ -13,9 +13,19 @@ const eventEmitter = new events();
 
 const formatPair = (b, q) => b + "-" + q;
 
+const requestRateLimit = { limit: 3, interval: 1000 }; // 3 requests per second
+let requestCounter = 0;
+
 const getTickers = async () => {
   try {
+    if (requestCounter >= requestRateLimit.limit) {
+      await delay(requestRateLimit.interval);
+      requestCounter = 0;
+    }
+
     const resp = await got("https://api.kucoin.com/api/v1/market/allTickers");
+    requestCounter++;
+
     const tickers = JSON.parse(resp.body).data.ticker;
     
     tickers.forEach(ticker => {
@@ -214,22 +224,6 @@ const processData = (pl) => {
   }
 };
 
-// Rate limiting logic to ensure the getTickers function doesn't exceed API rate limits
-const rateLimit = async (fn, limit, interval) => {
-  let lastCall = 0;
-  return async (...args) => {
-    const now = Date.now();
-    if (now - lastCall < interval) {
-      await delay(interval - (now - lastCall));
-    }
-    lastCall = Date.now();
-    return fn(...args);
-  };
-};
-
-// Create the rate-limited version of getTickers
-const getTickersWithRateLimit = rateLimit(getTickers, 15, 1000); // 15 requests per second
-
 let ws = "";
 let subs = [];
 let wspingTrigger = "";
@@ -324,8 +318,8 @@ const getPairs = () => {
   return pairs;
 };
 
-// Call getTickersWithRateLimit to fetch tickers with rate limit
-setInterval(() => getTickersWithRateLimit(), 100); // Call the function every 100ms
+// Call getTickers to fetch tickers with rate limit
+setInterval(() => getTickers(), 100); // Call the function every 100ms
 
 module.exports = { 
   getTickers, 
