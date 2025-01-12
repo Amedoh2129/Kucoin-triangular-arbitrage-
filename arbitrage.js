@@ -114,6 +114,10 @@ const processData = (pl) => {
     const { bestBid: bidPrice, bestAsk: askPrice } = data;
     if (!bidPrice && !askPrice) return;
 
+    if (!symValJ[symbol]) {
+      symValJ[symbol] = {};
+    }
+
     if (bidPrice) symValJ[symbol].bidPrice = bidPrice * 1;
     if (askPrice) symValJ[symbol].askPrice = askPrice * 1;
 
